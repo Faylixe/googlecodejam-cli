@@ -18,3 +18,7 @@ hs_err_pid*
 /.cjs-round
 
 /javadoc.xml
+
+# intellij files
+*.iml
+.idea

@@ -43,6 +43,9 @@ public final class ApplicationConstant {
 	/** Parameter value for firefox initialization method. **/
 	public static final String FIREFOX_METHOD = "firefox";
 
+	/** Parameter value for chrome initialization method. **/
+	public static final String CHROME_METHOD = "chrome";
+
 	/** Parameter value for text initialization method. **/
 	public static final String TEXT_METHOD = "text";
 

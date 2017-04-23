@@ -18,3 +18,16 @@ hs_err_pid*
 /.cjs-round
 
 /javadoc.xml
+
+# downloaded input output
+input
+output
+extracted-sample-input
+extracted-sample-output
+
+*.in
+*.out
+
+# intellij files
+*.iml
+.idea

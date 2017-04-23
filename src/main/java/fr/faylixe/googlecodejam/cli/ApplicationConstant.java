@@ -13,6 +13,12 @@ public final class ApplicationConstant {
 	/** Syntax of the command line script. **/
 	public static final String SYNTAX = "codejamclient.sh action parameter";
 
+	/** Path for extracted sample input directory. **/
+	public static final String EXTRACTED_SAMPLE_INPUT_DIRECTORY = "extracted-sample-input";
+
+	/** Path for extracted sample output directory. **/
+	public static final String EXTRACTED_SAMPLE_OUTPUT_DIRECTORY = "extracted-sample-output";
+
 	/** Short option for the contest parameter. **/
 	public static final String CONTEST = "c";
 
@@ -38,13 +44,26 @@ public final class ApplicationConstant {
 	public static final String INIT_METHOD_LONG = "method";
 
 	/** Description of the method parameter. **/
-	public static final String INIT_METHOD_DESCRIPTION = "Specify the initialization method to use. Supported method are firefox, or text";
+	public static final String INIT_METHOD_DESCRIPTION = "Specify the initialization method to use. Supported method are chrome, or text";
 
 	/** Parameter value for firefox initialization method. **/
 	public static final String FIREFOX_METHOD = "firefox";
 
+	/** Parameter value for chrome initialization method. **/
+	public static final String CHROME_METHOD = "chrome";
+
 	/** Parameter value for text initialization method. **/
 	public static final String TEXT_METHOD = "text";
+
+	/** Short option for the extract sample data sets action. **/
+	public static final String EXTRACT_SAMPLE_DATA_SETS = "e";
+
+	/** Long option for the extract sample data sets action**/
+	public static final String EXTRACT_SAMPLE_DATA_SETS_LONG = "extract";
+
+	/** Description of the extract sample data sets action. **/
+	public static final String EXTRACT_SAMPLE_DATA_SETS_DESCRIPTION = String.format("Extracts sample data sets from round problems if available," +
+			" and writes the samples in %s/%s directories", EXTRACTED_SAMPLE_INPUT_DIRECTORY, EXTRACTED_SAMPLE_OUTPUT_DIRECTORY);
 
 	/** Short option for the download action. **/
 	public static final String DOWNLOAD = "d";
@@ -127,6 +146,7 @@ public final class ApplicationConstant {
 	public static Options createOptions() {
 		final Options options = new Options();
 		options.addOption(INIT, INIT_LONG, false, INIT_DESCRIPTION);
+		options.addOption(EXTRACT_SAMPLE_DATA_SETS, EXTRACT_SAMPLE_DATA_SETS_LONG, false, EXTRACT_SAMPLE_DATA_SETS_DESCRIPTION);
 		options.addOption(DOWNLOAD, DOWNLOAD_LONG, false, DOWNLOAD_DESCRIPTION);
 		options.addOption(SUBMIT, SUBMIT_LONG, false, SUBMIT_DESCRIPTION);
 		options.addOption(PROBLEM, PROBLEM_LONG, true, PROBLEM_DESCRIPTION);

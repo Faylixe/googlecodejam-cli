@@ -7,6 +7,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+
 /**
  * <p>Main class that could be used as a command line program.</p>
  * 
@@ -52,22 +55,30 @@ public final class Application {
 			if (command.hasOption(ApplicationConstant.INIT)) {
 				status = ApplicationCommand.init(command);
 			}
+			else if(command.hasOption(ApplicationConstant.EXTRACT_SAMPLE_DATA_SETS)) {
+				status = ApplicationCommand.initDataSets();
+			}
 			else if (command.hasOption(ApplicationConstant.DOWNLOAD)) {
 				status = ApplicationCommand.download(command);
 			}
 			else if (command.hasOption(ApplicationConstant.SUBMIT)) {
 				status = ApplicationCommand.submit(command);
 			}
-			if (CommandStatus.INVALID_FORMAT.equals(status)) {
-				formatter.printHelp(ApplicationConstant.SYNTAX, options);				
-			}
+
 			if (!CommandStatus.SUCCESS.equals(status)) {
 				System.exit(-1);
 			}
+
 		}
 		catch (final ParseException e) {
 			System.out.println("An error occurs while parsing command line arguments : " + e.getMessage());
 			formatter.printHelp(ApplicationConstant.SYNTAX, options);
+			System.exit(-1);
+		} catch (GeneralSecurityException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		} catch (IOException e) {
+			e.printStackTrace();
 			System.exit(-1);
 		}
 	}

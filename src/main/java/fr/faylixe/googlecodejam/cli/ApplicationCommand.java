@@ -1,35 +1,5 @@
 package fr.faylixe.googlecodejam.cli;
 
-import io.github.bonigarcia.wdm.FirefoxDriverManager;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.function.Supplier;
-
-import static java.lang.System.out;
-import static java.lang.System.err;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.lang3.SerializationUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.remote.UnreachableBrowserException;
-
-import fr.faylixe.googlecodejam.cli.SeleniumCookieSupplier;
 import fr.faylixe.googlecodejam.client.CodeJamSession;
 import fr.faylixe.googlecodejam.client.Contest;
 import fr.faylixe.googlecodejam.client.Round;
@@ -40,7 +10,33 @@ import fr.faylixe.googlecodejam.client.executor.Request;
 import fr.faylixe.googlecodejam.client.webservice.Problem;
 import fr.faylixe.googlecodejam.client.webservice.ProblemInput;
 import fr.faylixe.googlecodejam.client.webservice.SubmitResponse;
+import io.github.bonigarcia.wdm.ChromeDriverManager;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.lang3.SerializationUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.remote.UnreachableBrowserException;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Scanner;
+import java.util.function.Supplier;
+
 import static fr.faylixe.googlecodejam.cli.ApplicationConstant.*;
+import static java.lang.System.err;
+import static java.lang.System.out;
 
 /**
  * <p>This class contains static method that are
@@ -56,12 +52,6 @@ public final class ApplicationCommand {
 
 	/** Path of the serialized cookie file to use. **/
 	private static final String COOKIE_PATH = ".cjs-cookie";
-
-	/** Path for input directory. **/
-	private static final String INPUT_DIRECTORY = "input";
-
-	/** Path for output directory. **/
-	private static final String OUTPUT_DIRECTORY = "output";
 
 	/** Classname of the DIV that contains our testing dataset. **/
 	private static final String IO_CLASSNAME = "problem-io-wrapper";
@@ -87,15 +77,38 @@ public final class ApplicationCommand {
 		if (contest != null) {
 			return Optional.of(Round.fromIdentifier(contest, cookie));
 		}
+		out.println("Enter contest id ('-' if you don't have a contest id):\n> ");
+		final Scanner reader = new Scanner(System.in);
+		final String contestId = reader.next();
+		if(!contestId.trim().equals("-")) {
+			if(isValidContestID(contestId)) {
+				return Optional.of(Round.fromIdentifier(contestId.trim(), cookie));
+			}
+			return Optional.empty();
+		}
+
 		out.println("[Round selection] Extracting contest list.");
 		final HttpRequestExecutor executor = HttpRequestExecutor.create(Request.getHostname());
 		final List<Contest> contests = Contest.get(executor);
-		final Scanner reader = new Scanner(System.in);
 		final Optional<Contest> selectedContest = select(contests, reader);
 		if (selectedContest.isPresent()) {
 			return select(selectedContest.get().getRounds(), reader);
 		}
 		return Optional.empty();
+	}
+
+	private static boolean isValidContestID(final String contestId) {
+
+		try {
+			long id = Long.parseLong(contestId);
+			return true;
+		} catch(NumberFormatException e) {
+			err.println("-> Number expected, abort");
+			if (Application.isVerbose()) {
+				e.printStackTrace();
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -146,25 +159,39 @@ public final class ApplicationCommand {
 		if (round.isPresent()) {
 			out.println("[Initialization] Writing " + COOKIE_PATH);
 			SerializationUtils.serialize(cookie, new FileOutputStream(COOKIE_PATH));
+			out.println("Cookie retrieved successfully.");
 			out.println("[Initialization] Writing " + ROUND_PATH);
 			SerializationUtils.serialize(round.get(), new FileOutputStream(ROUND_PATH));
-			out.println("[Initialization] Creating input directory");
-			Files.createDirectories(Paths.get(INPUT_DIRECTORY));
-			out.println("[Initialization] Creating output directory");
-			Files.createDirectories(Paths.get(OUTPUT_DIRECTORY));
-			out.println("[Initialization] Generating sample dataset");
-			final CodeJamSession session = getContextualSession();
+			out.println("Round retrieved successfully, you can now download and submit in this directory.");
+			return CommandStatus.SUCCESS;
+		}
+		err.println("-> No round selected, abort.");
+		return CommandStatus.FAILED;
+	}
+
+	public static CommandStatus initDataSets() throws IOException, GeneralSecurityException {
+		out.println("[Initialization] Creating input directory");
+		Files.createDirectories(Paths.get(EXTRACTED_SAMPLE_INPUT_DIRECTORY));
+		out.println("[Initialization] Creating output directory");
+		Files.createDirectories(Paths.get(EXTRACTED_SAMPLE_OUTPUT_DIRECTORY));
+		out.println("[Initialization] Generating sample dataset");
+		final CodeJamSession session = getContextualSession();
+		try {
 			final List<Problem> problems = session
 					.getContestInfo()
 					.getProblems();
 			for (int i = 0; i < problems.size(); i++) {
 				extractDataset(problems.get(i), i);
 			}
-			out.println("[Initialization] Initialization done, you can now download and submit in this directory.");
-			return CommandStatus.SUCCESS;
+		} catch(Exception e) {
+			e.printStackTrace();
+			try {Thread.sleep(10);} catch (InterruptedException e1) {}
+			err.println("-> Problem occurred while extracting sample data sets, abort.");
+			clearTestDataSets();
+			return CommandStatus.FAILED;
 		}
-		err.println("-> No round selected, abort.");
-		return CommandStatus.FAILED;
+		out.println("Sample data sets retrieved successfully.");
+		return CommandStatus.SUCCESS;
 	}
 
 	/**
@@ -174,7 +201,7 @@ public final class ApplicationCommand {
 	 * @throws IOException If any error occurs while creating sample dataset.
 	 */
 	private static void extractDataset(final Problem problem, final int id) throws IOException {
-		final Document document = (Document) Jsoup.parse(problem.getBody());
+		final Document document = Jsoup.parse(problem.getBody());
 		final Elements problemIO = document.getElementsByClass(IO_CLASSNAME);
 		if (!problemIO.isEmpty()) {
 			final Elements row = problemIO.first().getElementsByTag(HTMLConstant.TR);
@@ -188,10 +215,10 @@ public final class ApplicationCommand {
 						.append(TEST_EXTENSION)
 						.toString();
 					Files.write(
-							Paths.get(INPUT_DIRECTORY).resolve(path),
+							Paths.get(EXTRACTED_SAMPLE_INPUT_DIRECTORY).resolve(path),
 							io.first().text().getBytes());
 					Files.write(
-							Paths.get(OUTPUT_DIRECTORY).resolve(path),
+							Paths.get(EXTRACTED_SAMPLE_OUTPUT_DIRECTORY).resolve(path),
 							io.get(1).text().getBytes());
 				}
 			}
@@ -199,7 +226,7 @@ public final class ApplicationCommand {
 	}
 
 	/**
-	 * Starts firefox through selenium to retrieve
+	 * Starts chrome through selenium to retrieve
 	 * cookie instance and process initialization.
 	 * 
 	 * @param driverSupplier Driver supplier to use.
@@ -208,8 +235,8 @@ public final class ApplicationCommand {
 	 */
 	private static CommandStatus browserInit(final Supplier<WebDriver> driverSupplier, final String contest) {
 		out.println("[Initialization] Web browser will open, please authenticate to your Google account with it.");
-		FirefoxDriverManager.getInstance().setup();
-		final SeleniumCookieSupplier supplier = new SeleniumCookieSupplier(Request.getHostname() + "/codejam", FirefoxDriver::new);
+		ChromeDriverManager.getInstance().setup();
+		final SeleniumCookieSupplier supplier = new SeleniumCookieSupplier(Request.getHostname() + "/codejam", ChromeDriver::new);
 		try {
 			final String cookie = supplier.get();
 			if (cookie == null) {
@@ -258,19 +285,34 @@ public final class ApplicationCommand {
 	 * @return <tt>true</tt> if the init command was correctly executed, <tt>false</tt> otherwise.
 	 */
 	public static CommandStatus init(final CommandLine command) {
+		clearTestDataSets();
 		final String contest = command.getOptionValue(CONTEST);
 		if (command.hasOption(INIT_METHOD)) {
 			final String method = command.getOptionValue(INIT_METHOD).toLowerCase();
-			if (FIREFOX_METHOD.equals(method)) {
-				return browserInit(FirefoxDriver::new, contest);
+			if (CHROME_METHOD.equals(method)) {
+				return browserInit(ChromeDriver::new, contest);
 			}
 			else if (TEXT_METHOD.equals(method)) {
 				return textInit(contest);
 			}
-			err.println("-> Invalid method provided (only firefox or text supported");
+			printInvalidFormatHelpWithError("-> Invalid method provided (only chrome or text supported");
 			return CommandStatus.INVALID_FORMAT;
 		}
-		return browserInit(FirefoxDriver::new, contest);
+		return browserInit(ChromeDriver::new, contest);
+	}
+
+	public static void clearTestDataSets() {
+		removeAllUnderDir(EXTRACTED_SAMPLE_INPUT_DIRECTORY);
+		removeAllUnderDir(EXTRACTED_SAMPLE_OUTPUT_DIRECTORY);
+	}
+
+	public static void removeAllUnderDir(String dirName) {
+		File dir = new File(dirName);
+		if(dir.exists()) {
+			for(File f : dir.listFiles()) {
+				f.delete();
+			}
+		}
 	}
 
 	/**
@@ -282,12 +324,12 @@ public final class ApplicationCommand {
 	 * @throws GeneralSecurityException 
 	 */
 	private static CodeJamSession getContextualSession() throws IOException, GeneralSecurityException {
-		final String cookie = (String) SerializationUtils.deserialize(new FileInputStream(COOKIE_PATH));
+		final String cookie = SerializationUtils.deserialize(new FileInputStream(COOKIE_PATH));
 		if (cookie == null) {
 			throw new IOException("Invalid cookie file, please initialize directory again.");
 		}
 		final HttpRequestExecutor executor = HttpRequestExecutor.create(Request.getHostname(), cookie);
-		final Round round = (Round) SerializationUtils.deserialize(new FileInputStream(ROUND_PATH));
+		final Round round = SerializationUtils.deserialize(new FileInputStream(ROUND_PATH));
 		if (round == null) {
 			throw new IOException("Contextual session is broken, please initialize directory again.");
 		}
@@ -304,19 +346,23 @@ public final class ApplicationCommand {
 	 */
 	private static ProblemInput getProblemInput(final CommandLine command, final CodeJamSession session) {
 		if (!command.hasOption(PROBLEM) || !command.hasOption(INPUT_TYPE)) {
-			err.println("-> Download command requires problem and input type parameters.");
+			printInvalidFormatHelpWithError("-> Download command requires problem and input type parameters.");
 			return null;
 		}
 		final String problemArgument = command.getOptionValue(PROBLEM);
 		final String inputArgument = command.getOptionValue(INPUT_TYPE);
 		final Problem problem = session.getProblem(problemArgument);
 		if (problem == null) {
-			err.println("-> Problem " + problemArgument + " not found.");
+			printInvalidFormatHelpWithError("-> Problem " + problemArgument + " not found.");
 			return null;
 		}
 		final ProblemInput input = problem.getProblemInput(inputArgument);
 		if (input == null) {
-			err.println("-> Input " + inputArgument + "not found for problem " + problemArgument + ".");
+			String availableInputs = Arrays.toString(problem.getProblemInputs().stream().map((in) -> in.getName()).toArray());
+			StringBuilder msg = new StringBuilder()
+					.append("-> Input " + inputArgument + " not found for problem " + problemArgument + ".\n")
+					.append("-> Available input types are: " + availableInputs);
+			printInvalidFormatHelpWithError(msg.toString());
 			return null;
 		}
 		return input;
@@ -351,8 +397,9 @@ public final class ApplicationCommand {
 			if (Application.isVerbose()) {
 				e.printStackTrace();
 			}
+			return CommandStatus.FAILED;
 		}
-		return CommandStatus.FAILED;
+		return CommandStatus.SUCCESS;
 	}
 
 	/**
@@ -365,7 +412,7 @@ public final class ApplicationCommand {
 	 */
 	public static CommandStatus submit(final CommandLine command) {
 		if (!command.hasOption(OUTPUT) || !command.hasOption(SOURCE)) {
-			err.println("-> Submit command requires output and source file parameters.");
+			printInvalidFormatHelpWithError("-> Submit command requires output and source file parameters.");
 			return CommandStatus.INVALID_FORMAT;
 		}
 		final String output = command.getOptionValue(OUTPUT);
@@ -385,8 +432,20 @@ public final class ApplicationCommand {
 			if (Application.isVerbose()) {
 				e.printStackTrace();
 			}
+			return CommandStatus.FAILED;
 		}
-		return CommandStatus.FAILED;
+		return CommandStatus.SUCCESS;
+	}
+
+	public static void printInvalidFormatHelpWithError(final String errorMsg) {
+		final Options options = ApplicationConstant.createOptions();
+		final HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp(ApplicationConstant.SYNTAX, options);
+
+		try {
+			Thread.sleep(10);//to make sure standard output is printed before error output and prevent them from getting mixed up
+		} catch (InterruptedException e) {}
+		System.err.println(errorMsg);
 	}
 
 }

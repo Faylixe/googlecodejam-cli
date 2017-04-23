@@ -53,12 +53,6 @@ public final class ApplicationCommand {
 	/** Path of the serialized cookie file to use. **/
 	private static final String COOKIE_PATH = ".cjs-cookie";
 
-	/** Path for input directory. **/
-	private static final String INPUT_DIRECTORY = "input";
-
-	/** Path for output directory. **/
-	private static final String OUTPUT_DIRECTORY = "output";
-
 	/** Classname of the DIV that contains our testing dataset. **/
 	private static final String IO_CLASSNAME = "problem-io-wrapper";
 
@@ -83,15 +77,38 @@ public final class ApplicationCommand {
 		if (contest != null) {
 			return Optional.of(Round.fromIdentifier(contest, cookie));
 		}
+		out.println("Enter contest id ('-' if you don't have a contest id):\n> ");
+		final Scanner reader = new Scanner(System.in);
+		final String contestId = reader.next();
+		if(!contestId.trim().equals("-")) {
+			if(isValidContestID(contestId)) {
+				return Optional.of(Round.fromIdentifier(contestId.trim(), cookie));
+			}
+			return Optional.empty();
+		}
+
 		out.println("[Round selection] Extracting contest list.");
 		final HttpRequestExecutor executor = HttpRequestExecutor.create(Request.getHostname());
 		final List<Contest> contests = Contest.get(executor);
-		final Scanner reader = new Scanner(System.in);
 		final Optional<Contest> selectedContest = select(contests, reader);
 		if (selectedContest.isPresent()) {
 			return select(selectedContest.get().getRounds(), reader);
 		}
 		return Optional.empty();
+	}
+
+	private static boolean isValidContestID(final String contestId) {
+
+		try {
+			long id = Long.parseLong(contestId);
+			return true;
+		} catch(NumberFormatException e) {
+			err.println("-> Number expected, abort");
+			if (Application.isVerbose()) {
+				e.printStackTrace();
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -142,25 +159,39 @@ public final class ApplicationCommand {
 		if (round.isPresent()) {
 			out.println("[Initialization] Writing " + COOKIE_PATH);
 			SerializationUtils.serialize(cookie, new FileOutputStream(COOKIE_PATH));
+			out.println("Cookie retrieved successfully.");
 			out.println("[Initialization] Writing " + ROUND_PATH);
 			SerializationUtils.serialize(round.get(), new FileOutputStream(ROUND_PATH));
-			out.println("[Initialization] Creating input directory");
-			Files.createDirectories(Paths.get(INPUT_DIRECTORY));
-			out.println("[Initialization] Creating output directory");
-			Files.createDirectories(Paths.get(OUTPUT_DIRECTORY));
-			out.println("[Initialization] Generating sample dataset");
-			final CodeJamSession session = getContextualSession();
+			out.println("Round retrieved successfully, you can now download and submit in this directory.");
+			return CommandStatus.SUCCESS;
+		}
+		err.println("-> No round selected, abort.");
+		return CommandStatus.FAILED;
+	}
+
+	public static CommandStatus initDataSets() throws IOException, GeneralSecurityException {
+		out.println("[Initialization] Creating input directory");
+		Files.createDirectories(Paths.get(INPUT_DIRECTORY));
+		out.println("[Initialization] Creating output directory");
+		Files.createDirectories(Paths.get(OUTPUT_DIRECTORY));
+		out.println("[Initialization] Generating sample dataset");
+		final CodeJamSession session = getContextualSession();
+		try {
 			final List<Problem> problems = session
 					.getContestInfo()
 					.getProblems();
 			for (int i = 0; i < problems.size(); i++) {
 				extractDataset(problems.get(i), i);
 			}
-			out.println("[Initialization] Initialization done, you can now download and submit in this directory.");
-			return CommandStatus.SUCCESS;
+		} catch(Exception e) {
+			e.printStackTrace();
+			try {Thread.sleep(10);} catch (InterruptedException e1) {}
+			err.println("-> Problem occurred while extracting sample data sets, abort.");
+			clearTestDataSets();
+			return CommandStatus.FAILED;
 		}
-		err.println("-> No round selected, abort.");
-		return CommandStatus.FAILED;
+		out.println("Sample data sets retrieved successfully.");
+		return CommandStatus.SUCCESS;
 	}
 
 	/**
@@ -170,7 +201,7 @@ public final class ApplicationCommand {
 	 * @throws IOException If any error occurs while creating sample dataset.
 	 */
 	private static void extractDataset(final Problem problem, final int id) throws IOException {
-		final Document document = (Document) Jsoup.parse(problem.getBody());
+		final Document document = Jsoup.parse(problem.getBody());
 		final Elements problemIO = document.getElementsByClass(IO_CLASSNAME);
 		if (!problemIO.isEmpty()) {
 			final Elements row = problemIO.first().getElementsByTag(HTMLConstant.TR);
@@ -254,6 +285,7 @@ public final class ApplicationCommand {
 	 * @return <tt>true</tt> if the init command was correctly executed, <tt>false</tt> otherwise.
 	 */
 	public static CommandStatus init(final CommandLine command) {
+		clearTestDataSets();
 		final String contest = command.getOptionValue(CONTEST);
 		if (command.hasOption(INIT_METHOD)) {
 			final String method = command.getOptionValue(INIT_METHOD).toLowerCase();
@@ -269,6 +301,20 @@ public final class ApplicationCommand {
 		return browserInit(ChromeDriver::new, contest);
 	}
 
+	public static void clearTestDataSets() {
+		removeAllUnderDir(INPUT_DIRECTORY);
+		removeAllUnderDir(OUTPUT_DIRECTORY);
+	}
+
+	public static void removeAllUnderDir(String dirName) {
+		File dir = new File(dirName);
+		if(dir.exists()) {
+			for(File f : dir.listFiles()) {
+				f.delete();
+			}
+		}
+	}
+
 	/**
 	 * If exists, deserializes the cookie and round file
 	 * in order to create and returns a valid {@link CodeJamSession}.
@@ -278,12 +324,12 @@ public final class ApplicationCommand {
 	 * @throws GeneralSecurityException 
 	 */
 	private static CodeJamSession getContextualSession() throws IOException, GeneralSecurityException {
-		final String cookie = (String) SerializationUtils.deserialize(new FileInputStream(COOKIE_PATH));
+		final String cookie = SerializationUtils.deserialize(new FileInputStream(COOKIE_PATH));
 		if (cookie == null) {
 			throw new IOException("Invalid cookie file, please initialize directory again.");
 		}
 		final HttpRequestExecutor executor = HttpRequestExecutor.create(Request.getHostname(), cookie);
-		final Round round = (Round) SerializationUtils.deserialize(new FileInputStream(ROUND_PATH));
+		final Round round = SerializationUtils.deserialize(new FileInputStream(ROUND_PATH));
 		if (round == null) {
 			throw new IOException("Contextual session is broken, please initialize directory again.");
 		}

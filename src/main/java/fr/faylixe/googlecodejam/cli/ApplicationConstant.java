@@ -13,11 +13,11 @@ public final class ApplicationConstant {
 	/** Syntax of the command line script. **/
 	public static final String SYNTAX = "codejamclient.sh action parameter";
 
-	/** Path for input directory. **/
-	public static final String INPUT_DIRECTORY = "input";
+	/** Path for extracted sample input directory. **/
+	public static final String EXTRACTED_SAMPLE_INPUT_DIRECTORY = "extracted-sample-input";
 
-	/** Path for output directory. **/
-	public static final String OUTPUT_DIRECTORY = "output";
+	/** Path for extracted sample output directory. **/
+	public static final String EXTRACTED_SAMPLE_OUTPUT_DIRECTORY = "extracted-sample-output";
 
 	/** Short option for the contest parameter. **/
 	public static final String CONTEST = "c";
@@ -35,8 +35,7 @@ public final class ApplicationConstant {
 	public static final String INIT_LONG = "init";
 
 	/** Description of the initialization action. **/
-	public static final String INIT_DESCRIPTION = String.format("Initializes code jam context by logging user in, and selects an active contest and round." +
-			" Also extracts sample data sets from round problems if available, and writes the samples in %s/%s directories.", INPUT_DIRECTORY, OUTPUT_DIRECTORY);
+	public static final String INIT_DESCRIPTION = "Initializes code jam context by logging user in, and selects an active contest and round.";
 
 	/** Short option for the initialization method. **/
 	public static final String INIT_METHOD = "m";
@@ -64,7 +63,7 @@ public final class ApplicationConstant {
 
 	/** Description of the extract sample data sets action. **/
 	public static final String EXTRACT_SAMPLE_DATA_SETS_DESCRIPTION = String.format("Extracts sample data sets from round problems if available," +
-			" and writes the samples in %s/%s directories", INPUT_DIRECTORY, OUTPUT_DIRECTORY);
+			" and writes the samples in %s/%s directories", EXTRACTED_SAMPLE_INPUT_DIRECTORY, EXTRACTED_SAMPLE_OUTPUT_DIRECTORY);
 
 	/** Short option for the download action. **/
 	public static final String DOWNLOAD = "d";

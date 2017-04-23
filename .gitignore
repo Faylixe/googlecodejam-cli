@@ -22,6 +22,9 @@ hs_err_pid*
 # downloaded input output
 input
 output
+extracted-sample-input
+extracted-sample-output
+
 *.in
 *.out
 

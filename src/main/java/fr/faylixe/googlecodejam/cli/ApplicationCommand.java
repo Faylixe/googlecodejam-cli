@@ -171,9 +171,9 @@ public final class ApplicationCommand {
 
 	public static CommandStatus initDataSets() throws IOException, GeneralSecurityException {
 		out.println("[Initialization] Creating input directory");
-		Files.createDirectories(Paths.get(INPUT_DIRECTORY));
+		Files.createDirectories(Paths.get(EXTRACTED_SAMPLE_INPUT_DIRECTORY));
 		out.println("[Initialization] Creating output directory");
-		Files.createDirectories(Paths.get(OUTPUT_DIRECTORY));
+		Files.createDirectories(Paths.get(EXTRACTED_SAMPLE_OUTPUT_DIRECTORY));
 		out.println("[Initialization] Generating sample dataset");
 		final CodeJamSession session = getContextualSession();
 		try {
@@ -215,10 +215,10 @@ public final class ApplicationCommand {
 						.append(TEST_EXTENSION)
 						.toString();
 					Files.write(
-							Paths.get(INPUT_DIRECTORY).resolve(path),
+							Paths.get(EXTRACTED_SAMPLE_INPUT_DIRECTORY).resolve(path),
 							io.first().text().getBytes());
 					Files.write(
-							Paths.get(OUTPUT_DIRECTORY).resolve(path),
+							Paths.get(EXTRACTED_SAMPLE_OUTPUT_DIRECTORY).resolve(path),
 							io.get(1).text().getBytes());
 				}
 			}
@@ -302,8 +302,8 @@ public final class ApplicationCommand {
 	}
 
 	public static void clearTestDataSets() {
-		removeAllUnderDir(INPUT_DIRECTORY);
-		removeAllUnderDir(OUTPUT_DIRECTORY);
+		removeAllUnderDir(EXTRACTED_SAMPLE_INPUT_DIRECTORY);
+		removeAllUnderDir(EXTRACTED_SAMPLE_OUTPUT_DIRECTORY);
 	}
 
 	public static void removeAllUnderDir(String dirName) {

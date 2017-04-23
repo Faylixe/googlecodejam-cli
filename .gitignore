@@ -19,6 +19,12 @@ hs_err_pid*
 
 /javadoc.xml
 
+# downloaded input output
+input
+output
+*.in
+*.out
+
 # intellij files
 *.iml
 .idea

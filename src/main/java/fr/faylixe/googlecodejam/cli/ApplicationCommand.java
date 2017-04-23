@@ -12,6 +12,8 @@ import fr.faylixe.googlecodejam.client.webservice.ProblemInput;
 import fr.faylixe.googlecodejam.client.webservice.SubmitResponse;
 import io.github.bonigarcia.wdm.ChromeDriverManager;
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.SerializationUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -26,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
@@ -260,7 +263,7 @@ public final class ApplicationCommand {
 			else if (TEXT_METHOD.equals(method)) {
 				return textInit(contest);
 			}
-			err.println("-> Invalid method provided (only chrome or text supported");
+			printInvalidFormatHelpWithError("-> Invalid method provided (only chrome or text supported");
 			return CommandStatus.INVALID_FORMAT;
 		}
 		return browserInit(ChromeDriver::new, contest);
@@ -297,19 +300,23 @@ public final class ApplicationCommand {
 	 */
 	private static ProblemInput getProblemInput(final CommandLine command, final CodeJamSession session) {
 		if (!command.hasOption(PROBLEM) || !command.hasOption(INPUT_TYPE)) {
-			err.println("-> Download command requires problem and input type parameters.");
+			printInvalidFormatHelpWithError("-> Download command requires problem and input type parameters.");
 			return null;
 		}
 		final String problemArgument = command.getOptionValue(PROBLEM);
 		final String inputArgument = command.getOptionValue(INPUT_TYPE);
 		final Problem problem = session.getProblem(problemArgument);
 		if (problem == null) {
-			err.println("-> Problem " + problemArgument + " not found.");
+			printInvalidFormatHelpWithError("-> Problem " + problemArgument + " not found.");
 			return null;
 		}
 		final ProblemInput input = problem.getProblemInput(inputArgument);
 		if (input == null) {
-			err.println("-> Input " + inputArgument + "not found for problem " + problemArgument + ".");
+			String availableInputs = Arrays.toString(problem.getProblemInputs().stream().map((in) -> in.getName()).toArray());
+			StringBuilder msg = new StringBuilder()
+					.append("-> Input " + inputArgument + " not found for problem " + problemArgument + ".\n")
+					.append("-> Available input types are: " + availableInputs);
+			printInvalidFormatHelpWithError(msg.toString());
 			return null;
 		}
 		return input;
@@ -344,8 +351,9 @@ public final class ApplicationCommand {
 			if (Application.isVerbose()) {
 				e.printStackTrace();
 			}
+			return CommandStatus.FAILED;
 		}
-		return CommandStatus.FAILED;
+		return CommandStatus.SUCCESS;
 	}
 
 	/**
@@ -358,7 +366,7 @@ public final class ApplicationCommand {
 	 */
 	public static CommandStatus submit(final CommandLine command) {
 		if (!command.hasOption(OUTPUT) || !command.hasOption(SOURCE)) {
-			err.println("-> Submit command requires output and source file parameters.");
+			printInvalidFormatHelpWithError("-> Submit command requires output and source file parameters.");
 			return CommandStatus.INVALID_FORMAT;
 		}
 		final String output = command.getOptionValue(OUTPUT);
@@ -378,8 +386,20 @@ public final class ApplicationCommand {
 			if (Application.isVerbose()) {
 				e.printStackTrace();
 			}
+			return CommandStatus.FAILED;
 		}
-		return CommandStatus.FAILED;
+		return CommandStatus.SUCCESS;
+	}
+
+	public static void printInvalidFormatHelpWithError(final String errorMsg) {
+		final Options options = ApplicationConstant.createOptions();
+		final HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp(ApplicationConstant.SYNTAX, options);
+
+		try {
+			Thread.sleep(10);//to make sure standard output is printed before error output and prevent them from getting mixed up
+		} catch (InterruptedException e) {}
+		System.err.println(errorMsg);
 	}
 
 }

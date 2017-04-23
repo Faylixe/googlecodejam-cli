@@ -58,12 +58,11 @@ public final class Application {
 			else if (command.hasOption(ApplicationConstant.SUBMIT)) {
 				status = ApplicationCommand.submit(command);
 			}
-			if (CommandStatus.INVALID_FORMAT.equals(status)) {
-				formatter.printHelp(ApplicationConstant.SYNTAX, options);				
-			}
+
 			if (!CommandStatus.SUCCESS.equals(status)) {
 				System.exit(-1);
 			}
+
 		}
 		catch (final ParseException e) {
 			System.out.println("An error occurs while parsing command line arguments : " + e.getMessage());

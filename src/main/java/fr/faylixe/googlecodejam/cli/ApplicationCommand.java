@@ -1,35 +1,5 @@
 package fr.faylixe.googlecodejam.cli;
 
-import io.github.bonigarcia.wdm.FirefoxDriverManager;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.function.Supplier;
-
-import static java.lang.System.out;
-import static java.lang.System.err;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.lang3.SerializationUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.remote.UnreachableBrowserException;
-
-import fr.faylixe.googlecodejam.cli.SeleniumCookieSupplier;
 import fr.faylixe.googlecodejam.client.CodeJamSession;
 import fr.faylixe.googlecodejam.client.Contest;
 import fr.faylixe.googlecodejam.client.Round;
@@ -40,7 +10,30 @@ import fr.faylixe.googlecodejam.client.executor.Request;
 import fr.faylixe.googlecodejam.client.webservice.Problem;
 import fr.faylixe.googlecodejam.client.webservice.ProblemInput;
 import fr.faylixe.googlecodejam.client.webservice.SubmitResponse;
+import io.github.bonigarcia.wdm.ChromeDriverManager;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.lang3.SerializationUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.remote.UnreachableBrowserException;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.util.List;
+import java.util.Optional;
+import java.util.Scanner;
+import java.util.function.Supplier;
+
 import static fr.faylixe.googlecodejam.cli.ApplicationConstant.*;
+import static java.lang.System.err;
+import static java.lang.System.out;
 
 /**
  * <p>This class contains static method that are
@@ -199,7 +192,7 @@ public final class ApplicationCommand {
 	}
 
 	/**
-	 * Starts firefox through selenium to retrieve
+	 * Starts chrome through selenium to retrieve
 	 * cookie instance and process initialization.
 	 * 
 	 * @param driverSupplier Driver supplier to use.
@@ -208,8 +201,8 @@ public final class ApplicationCommand {
 	 */
 	private static CommandStatus browserInit(final Supplier<WebDriver> driverSupplier, final String contest) {
 		out.println("[Initialization] Web browser will open, please authenticate to your Google account with it.");
-		FirefoxDriverManager.getInstance().setup();
-		final SeleniumCookieSupplier supplier = new SeleniumCookieSupplier(Request.getHostname() + "/codejam", FirefoxDriver::new);
+		ChromeDriverManager.getInstance().setup();
+		final SeleniumCookieSupplier supplier = new SeleniumCookieSupplier(Request.getHostname() + "/codejam", ChromeDriver::new);
 		try {
 			final String cookie = supplier.get();
 			if (cookie == null) {
@@ -261,16 +254,16 @@ public final class ApplicationCommand {
 		final String contest = command.getOptionValue(CONTEST);
 		if (command.hasOption(INIT_METHOD)) {
 			final String method = command.getOptionValue(INIT_METHOD).toLowerCase();
-			if (FIREFOX_METHOD.equals(method)) {
-				return browserInit(FirefoxDriver::new, contest);
+			if (CHROME_METHOD.equals(method)) {
+				return browserInit(ChromeDriver::new, contest);
 			}
 			else if (TEXT_METHOD.equals(method)) {
 				return textInit(contest);
 			}
-			err.println("-> Invalid method provided (only firefox or text supported");
+			err.println("-> Invalid method provided (only chrome or text supported");
 			return CommandStatus.INVALID_FORMAT;
 		}
-		return browserInit(FirefoxDriver::new, contest);
+		return browserInit(ChromeDriver::new, contest);
 	}
 
 	/**
